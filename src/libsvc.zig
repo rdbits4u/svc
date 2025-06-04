@@ -4,6 +4,7 @@ const svc_priv = @import("svc_priv.zig");
 const c = @cImport(
 {
     @cInclude("libsvc.h");
+    @cInclude("rdp_constants.h");
 });
 
 var g_allocator: std.mem.Allocator = std.heap.c_allocator;
@@ -11,25 +12,25 @@ var g_allocator: std.mem.Allocator = std.heap.c_allocator;
 // int svc_init(void);
 export fn svc_init() c_int
 {
-    return 0;
+    return c.LIBSVC_ERROR_NONE;
 }
 
 // int svc_deinit(void);
 export fn svc_deinit() c_int
 {
-    return 0;
+    return c.LIBSVC_ERROR_NONE;
 }
 
 // int svc_create(struct svc_channels_t** svc_channels);
 export fn svc_create(svc_channels: ?**c.svc_channels_t) c_int
 {
-    // check if rdpc is nil
+    // check if svc_channels is nil
     if (svc_channels) |asvc_channels|
     {
         const priv = svc_priv.create(&g_allocator) catch
-                return 1;
+                return c.LIBSVC_ERROR_MEMORY;
         asvc_channels.* = @ptrCast(priv);
-        return 0;
+        return c.LIBSVC_ERROR_NONE;
     }
     return 1;
 }
@@ -44,7 +45,7 @@ export fn svc_delete(svc_channels: ?*c.svc_channels_t) c_int
         const priv: *svc_priv.svc_priv_t = @ptrCast(asvc_channels);
         priv.delete();
     }
-    return 0;
+    return c.LIBSVC_ERROR_NONE;
 }
 
 // int svc_process_data(struct svc_channels_t* svc_channels,
@@ -72,12 +73,12 @@ export fn svc_process_data(svc_channels: ?*c.svc_channels_t,
             else |err|
             {
                 priv.logln(@src(), "svc_process_data err {}",
-                        .{err}) catch return 1;
+                        .{err}) catch return c.LIBSVC_ERROR_MEMORY;
                 return 1;
             }
         }
     }
-    return 0;
+    return c.LIBSVC_ERROR_NONE;
 }
 
 // int svc_send_data(struct svc_channels_t* svc_channels,
@@ -105,10 +106,10 @@ export fn svc_send_data(svc_channels: ?*c.svc_channels_t,
             else |err|
             {
                 priv.logln(@src(), "send_slice_data err {}",
-                        .{err}) catch return 1;
+                        .{err}) catch return c.LIBSVC_ERROR_MEMORY;
                 return 1;
             }
         }
     }
-    return 0;
+    return c.LIBSVC_ERROR_NONE;
 }

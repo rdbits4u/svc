@@ -2,6 +2,12 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void
 {
+    // build options
+    const do_strip = b.option(
+        bool,
+        "strip",
+        "Strip the executabes"
+    ) orelse false;
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // libsvc
@@ -10,7 +16,7 @@ pub fn build(b: *std.Build) void
         .root_source_file = b.path("src/libsvc.zig"),
         .target = target,
         .optimize = optimize,
-        .strip = true,
+        .strip = do_strip,
     });
     libsvc.linkLibC();
     libsvc.addIncludePath(b.path("../common"));

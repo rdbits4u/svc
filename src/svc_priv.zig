@@ -4,6 +4,7 @@ const hexdump = @import("hexdump");
 const c = @cImport(
 {
     @cInclude("libsvc.h");
+    @cInclude("rdp_constants.h");
 });
 
 const g_devel = false;
@@ -38,7 +39,7 @@ pub const svc_priv_t = extern struct
                     fmt, args);
             defer self.allocator.free(alloc_buf);
             const alloc1_buf = try std.fmt.allocPrintZ(self.allocator.*,
-                    "{s}:{s}", .{src.fn_name, alloc_buf});
+                    "svc:{s}:{s}", .{src.fn_name, alloc_buf});
             defer self.allocator.free(alloc1_buf);
             _ = alog_msg(&self.svc, alloc1_buf.ptr);
         }
@@ -61,7 +62,7 @@ pub const svc_priv_t = extern struct
         try self.logln(@src(), "channel_id 0x{X}", .{channel_id});
         if ((channel_id < 0x03EC) or (channel_id > (0x03EC + 15)))
         {
-            return 1;
+            return c.LIBSVC_ERROR_CHANID;
         }
         const index = (channel_id - 0x03EC) & 0xF;
         const channel = &self.svc.channels[index];
@@ -70,19 +71,22 @@ pub const svc_priv_t = extern struct
         try s.check_rem(8);
         const len = s.in_u32_le();
         const flags = s.in_u32_le();
-        if ((flags & 1 != 0) and (flags & 2 != 0)) // first and last
+        if ((flags & c.CHANNEL_FLAG_FIRST != 0) and
+                (flags & c.CHANNEL_FLAG_LAST != 0)) // first and last
         {
             try s.check_rem(len);
-            if (channel.channel_pdu) |achannel_pdu|
+            if (channel.process_data) |aprocess_data|
             {
                 const cslice = s.in_u8_slice(len);
-                return achannel_pdu(channel, channel_id,
+                return aprocess_data(channel, channel_id,
                         cslice.ptr, @truncate(cslice.len));
             }
-            try self.logln(@src(), "error, no channel assigned", .{});
-            return 1;
+            try self.logln(@src(),
+                    "error, no channel callback assigned",
+                    .{});
+            return c.LIBSVC_ERROR_NO_CALLBACK;
         }
-        if ((flags & 1) != 0) // first
+        if ((flags & c.CHANNEL_FLAG_FIRST) != 0) // first
         {
             if (self.buf_s[index]) |as|
             {
@@ -96,20 +100,23 @@ pub const svc_priv_t = extern struct
             const rem = s.get_rem();
             try s.check_rem(rem);
             as.out_u8_slice(s.in_u8_slice(rem));
-            if ((flags & 2) != 0) // last
+            if ((flags & c.CHANNEL_FLAG_LAST) != 0) // last
             {
                 try as.reset(0);
-                if (channel.channel_pdu) |achannel_pdu|
+                if (channel.process_data) |aprocess_data|
                 {
                     const cslice = as.in_u8_slice(len);
-                    return achannel_pdu(channel, channel_id,
+                    return aprocess_data(channel, channel_id,
                             cslice.ptr, @truncate(cslice.len));
                 }
-                return 1;
+                try self.logln(@src(),
+                        "error, no channel callback assigned",
+                        .{});
+                return c.LIBSVC_ERROR_NO_CALLBACK;
             }
-            return 0;
+            return c.LIBSVC_ERROR_NONE;
         }
-        return 1;
+        return c.LIBSVC_ERROR_PROCESS_DATA;
     }
 
     //*************************************************************************
@@ -118,27 +125,27 @@ pub const svc_priv_t = extern struct
     {
         if ((channel_id < 0x03EC) or (channel_id > (0x03EC + 15)))
         {
-            return 1;
+            return c.LIBSVC_ERROR_CHANID;
         }
-        if (self.svc.channel_pdu) |achannel_pdu|
+        if (self.svc.send_data) |asend_data|
         {
             const total_len: u32 = @truncate(slice.len);
             var len_left = total_len;
-            var flags: u32 = 1;
+            var flags: u32 = c.CHANNEL_FLAG_FIRST;
             var offset: usize = 0;
             while (len_left > 0)
             {
                 var chunk_bytes = len_left;
-                if (chunk_bytes > 1600)
+                if (chunk_bytes > c.CHANNEL_CHUCK_LENGTH)
                 {
-                    chunk_bytes = 1600;
+                    chunk_bytes = c.CHANNEL_CHUCK_LENGTH;
                 }
                 else
                 {
-                    flags |= 2;
+                    flags |= c.CHANNEL_FLAG_LAST;
                 }
                 const cslice = slice[offset..offset + chunk_bytes];
-                const rv = achannel_pdu(&self.svc, channel_id, total_len,
+                const rv = asend_data(&self.svc, channel_id, total_len,
                         flags, cslice.ptr, @truncate(cslice.len));
                 if (rv != 0)
                 {
@@ -148,9 +155,9 @@ pub const svc_priv_t = extern struct
                 offset += chunk_bytes;
                 flags = 0;
             }
-            return 0;
+            return c.LIBSVC_ERROR_NONE;
         }
-        return 1;
+        return c.LIBSVC_ERROR_SEND_DATA;
     }
 
 };
