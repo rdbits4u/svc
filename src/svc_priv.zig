@@ -59,7 +59,7 @@ pub const svc_priv_t = extern struct
     pub fn process_slice_data(self: *svc_priv_t, channel_id: u16,
             slice: []u8) !c_int
     {
-        try self.logln(@src(), "channel_id 0x{X}", .{channel_id});
+        try self.logln_devel(@src(), "channel_id 0x{X}", .{channel_id});
         if ((channel_id < 0x03EC) or (channel_id > (0x03EC + 15)))
         {
             return c.LIBSVC_ERROR_CHANID;
@@ -71,6 +71,7 @@ pub const svc_priv_t = extern struct
         try s.check_rem(8);
         const len = s.in_u32_le();
         const flags = s.in_u32_le();
+        try self.logln_devel(@src(), "len {} flags 0x{X}", .{len, flags});
         if ((flags & c.CHANNEL_FLAG_FIRST != 0) and
                 (flags & c.CHANNEL_FLAG_LAST != 0)) // first and last
         {
@@ -99,12 +100,14 @@ pub const svc_priv_t = extern struct
         {
             const rem = s.get_rem();
             try s.check_rem(rem);
+            try as.check_rem(rem);
             as.out_u8_slice(s.in_u8_slice(rem));
             if ((flags & c.CHANNEL_FLAG_LAST) != 0) // last
             {
                 try as.reset(0);
                 if (channel.process_data) |aprocess_data|
                 {
+                    try as.check_rem(len);
                     const cslice = as.in_u8_slice(len);
                     return aprocess_data(channel, channel_id,
                             cslice.ptr, @truncate(cslice.len));
