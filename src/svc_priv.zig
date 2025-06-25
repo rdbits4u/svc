@@ -16,6 +16,15 @@ pub const svc_priv_t = extern struct
     buf_s: [16]?*parse.parse_t = .{null} ** 16,
 
     //*************************************************************************
+    pub fn create(allocator: *const std.mem.Allocator) !*svc_priv_t
+    {
+        const priv: *svc_priv_t = try allocator.create(svc_priv_t);
+        errdefer allocator.destroy(priv);
+        priv.* = .{.allocator = allocator };
+        return priv;
+    }
+
+    //*************************************************************************
     pub fn delete(self: *svc_priv_t) void
     {
         for (self.buf_s) |s|
@@ -66,7 +75,7 @@ pub const svc_priv_t = extern struct
         }
         const index = (channel_id - 0x03EC) & 0xF;
         const channel = &self.svc.channels[index];
-        const s = try parse.create_from_slice(self.allocator, slice);
+        const s = try parse.parse_t.create_from_slice(self.allocator, slice);
         defer s.delete();
         try s.check_rem(8);
         const len = s.in_u32_le();
@@ -94,7 +103,7 @@ pub const svc_priv_t = extern struct
                 as.delete();
                 self.buf_s[index] = null;
             }
-            self.buf_s[index] = try parse.create(self.allocator, len);
+            self.buf_s[index] = try parse.parse_t.create(self.allocator, len);
         }
         if (self.buf_s[index]) |as|
         {
@@ -164,12 +173,3 @@ pub const svc_priv_t = extern struct
     }
 
 };
-
-//*****************************************************************************
-pub fn create(allocator: *const std.mem.Allocator) !*svc_priv_t
-{
-    const priv: *svc_priv_t = try allocator.create(svc_priv_t);
-    errdefer allocator.destroy(priv);
-    priv.* = .{.allocator = allocator };
-    return priv;
-}

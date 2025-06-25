@@ -27,7 +27,7 @@ export fn svc_create(svc_channels: ?**c.svc_channels_t) c_int
     // check if svc_channels is nil
     if (svc_channels) |asvc_channels|
     {
-        const priv = svc_priv.create(&g_allocator) catch
+        const priv = svc_priv.svc_priv_t.create(&g_allocator) catch
                 return c.LIBSVC_ERROR_MEMORY;
         asvc_channels.* = @ptrCast(priv);
         return c.LIBSVC_ERROR_NONE;
