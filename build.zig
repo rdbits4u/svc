@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) void
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // libsvc
-    const libsvc = b.addSharedLibrary(.{
+    const libsvc = b.addStaticLibrary(.{
         .name = "svc",
         .root_source_file = b.path("src/libsvc.zig"),
         .target = target,
