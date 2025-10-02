@@ -1,7 +1,7 @@
 const std = @import("std");
 const parse = @import("parse");
 const hexdump = @import("hexdump");
-const c = @cImport(
+pub const c = @cImport(
 {
     @cInclude("libsvc.h");
     @cInclude("rdp_constants.h");
@@ -47,8 +47,8 @@ pub const svc_priv_t = extern struct
             const alloc_buf = try std.fmt.allocPrint(self.allocator.*,
                     fmt, args);
             defer self.allocator.free(alloc_buf);
-            const alloc1_buf = try std.fmt.allocPrintZ(self.allocator.*,
-                    "svc:{s}:{s}", .{src.fn_name, alloc_buf});
+            const alloc1_buf = try std.fmt.allocPrint(self.allocator.*,
+                    "svc:{s}:{s}\x00", .{src.fn_name, alloc_buf});
             defer self.allocator.free(alloc1_buf);
             _ = alog_msg(&self.svc, alloc1_buf.ptr);
         }

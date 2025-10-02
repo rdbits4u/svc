@@ -1,11 +1,6 @@
 const std = @import("std");
 const svc_priv = @import("svc_priv.zig");
-
-const c = @cImport(
-{
-    @cInclude("libsvc.h");
-    @cInclude("rdp_constants.h");
-});
+const c = svc_priv.c;
 
 var g_allocator: std.mem.Allocator = std.heap.c_allocator;
 
