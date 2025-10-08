@@ -10,6 +10,7 @@
 #define LIBSVC_ERROR_SEND_DATA      -3
 #define LIBSVC_ERROR_PROCESS_DATA   -4
 #define LIBSVC_ERROR_NO_CALLBACK    -5
+#define LIBSVC_ERROR_LOG            -6
 
 struct svc_t
 {
