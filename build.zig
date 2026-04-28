@@ -14,9 +14,9 @@ pub fn build(b: *std.Build) void
     // libsvc
     const libsvc = myAddStaticLibrary(b, "svc", target, optimize, do_strip);
     libsvc.root_module.root_source_file = b.path("src/libsvc.zig");
-    libsvc.linkLibC();
-    libsvc.addIncludePath(b.path("../common"));
-    libsvc.addIncludePath(b.path("include"));
+    myLinkLibC(libsvc);
+    myAddIncludePath(libsvc, b.path("../common"));
+    myAddIncludePath(libsvc, b.path("include"));
     libsvc.root_module.addImport("parse", b.createModule(.{
         .root_source_file = b.path("../common/parse.zig"),
     }));
@@ -27,6 +27,32 @@ pub fn build(b: *std.Build) void
         .root_source_file = b.path("../common/strings.zig"),
     }));
     b.installArtifact(libsvc);
+}
+
+//*****************************************************************************
+fn myLinkLibC(compile: *std.Build.Step.Compile) void
+{
+    if ((builtin.zig_version.major == 0) and (builtin.zig_version.minor < 16))
+    {
+        compile.linkLibC();
+    }
+    else
+    {
+        compile.root_module.link_libc = true;
+    }
+}
+
+//*****************************************************************************
+fn myAddIncludePath(compile: *std.Build.Step.Compile, lazy_path: std.Build.LazyPath) void
+{
+    if ((builtin.zig_version.major == 0) and (builtin.zig_version.minor < 16))
+    {
+        compile.addIncludePath(lazy_path);
+    }
+    else
+    {
+        compile.root_module.addIncludePath(lazy_path);
+    }
 }
 
 //*****************************************************************************
